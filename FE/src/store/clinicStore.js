@@ -1,43 +1,68 @@
 import { create } from 'zustand'
-import { generateMRN, generateQueueNumber } from '../utils/generateMRN.js'
+import { clinicApi } from '../services/clinicApi.js'
 
-const today = new Date().toISOString().slice(0, 10)
-const seedPatients = [
-  { id: 1, mrn: 'RM-202609-00001', nik: '3273014501900001', name: 'Siti Aminah', gender: 'Perempuan', birthDate: '1990-01-15', phone: '081234567890', address: 'Jl. Melati No. 12' },
-  { id: 2, mrn: 'RM-202609-00002', nik: '3273011202850002', name: 'Budi Santoso', gender: 'Laki-laki', birthDate: '1985-02-12', phone: '081298765432', address: 'Jl. Anggrek No. 8' },
-  { id: 3, mrn: 'RM-202609-00003', nik: '3273015203920003', name: 'Rina Wulandari', gender: 'Perempuan', birthDate: '1992-03-22', phone: '085612345678', address: 'Jl. Kenanga No. 4' },
-]
-const seedVisits = [
-  { id: 101, patientId: 1, doctor: 'dr. Andi Pratama', poli: 'Poli Umum', date: today, payment: 'BPJS', complaint: 'Demam dan batuk sejak 2 hari', status: 'Menunggu', queueNumber: 'A001' },
-  { id: 102, patientId: 2, doctor: 'dr. Andi Pratama', poli: 'Poli Umum', date: today, payment: 'Umum', complaint: 'Kontrol tekanan darah', status: 'Check In', queueNumber: 'A002' },
-]
-const read = (key, fallback) => { try { return JSON.parse(localStorage.getItem(key)) || fallback } catch { return fallback } }
-const save = (key, value) => localStorage.setItem(key, JSON.stringify(value))
+const currentDate = new Date()
+const today = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`
+const patientFromApi = (patient) => ({ ...patient, mrn: patient.medicalRecordNumber })
+const visitFromApi = (visit) => ({ ...visit, date: String(visit.date).slice(0, 10), poli: visit.clinic })
+const medicalRecordFromApi = (record) => ({ ...record, patientId: record.patient_id, visitId: record.registration_id, patientName: record.patientName, medicalRecordNumber: record.medicalRecordNumber, bloodPressure: record.blood_pressure, actions: record.medical_action, prescriptions: record.prescriptions, createdAt: record.created_at })
+const apiMessage = (error) => error.response?.data?.message || 'Gagal menghubungi backend.'
 
 const useClinicStore = create((set, get) => ({
-  patients: read('clinic_patients', seedPatients),
-  visits: read('clinic_visits', seedVisits),
-  examinations: read('clinic_examinations', []),
-  addPatient: (data) => {
-    if (get().patients.some((patient) => patient.nik === data.nik)) return { error: 'NIK sudah terdaftar.' }
-    let mrn = generateMRN()
-    while (get().patients.some((patient) => patient.mrn === mrn)) mrn = generateMRN()
-    const patient = { ...data, id: Date.now(), mrn }
-    const patients = [...get().patients, patient]; save('clinic_patients', patients); set({ patients }); return { patient }
+  patients: [],
+  visits: [],
+  queues: [],
+  doctors: [],
+  referenceData: { clinics: [], paymentTypes: [], visitStatuses: [], userRoles: [] },
+  examinations: [],
+  loading: false,
+  error: null,
+  hydrate: async () => {
+    set({ loading: true, error: null })
+    try {
+      const [patientsResponse, registrationsResponse, queuesResponse, doctorsResponse, referenceResponse] = await Promise.all([clinicApi.patients.list({ limit: 100 }), clinicApi.registrations.list(), clinicApi.queues.list({ date: today }), clinicApi.users.doctors(), clinicApi.referenceData()])
+      const role = localStorage.getItem('role')
+      const canViewMedicalRecords = ['Superadmin', 'Administrator', 'Dokter'].includes(role)
+      const medicalRecordsResponse = canViewMedicalRecords ? await clinicApi.medicalRecords.list() : null
+      set({ patients: patientsResponse.data.data.map(patientFromApi), visits: registrationsResponse.data.data.map(visitFromApi), queues: queuesResponse.data.data.map(visitFromApi), doctors: doctorsResponse.data.data, referenceData: referenceResponse.data.data, examinations: medicalRecordsResponse ? medicalRecordsResponse.data.data.map(medicalRecordFromApi) : [], loading: false })
+    } catch (error) { set({ patients: [], visits: [], queues: [], doctors: [], referenceData: { clinics: [], paymentTypes: [], visitStatuses: [], userRoles: [] }, loading: false, error: apiMessage(error) }) }
   },
-  updatePatient: (id, data) => {
-    if (get().patients.some((patient) => patient.nik === data.nik && patient.id !== id)) return { error: 'NIK sudah terdaftar.' }
-    const patients = get().patients.map((patient) => patient.id === id ? { ...patient, ...data } : patient); save('clinic_patients', patients); set({ patients }); return {}
+  addPatient: async (data) => {
+    try { const response = await clinicApi.patients.create(data); const patient = patientFromApi(response.data.data); set({ patients: [...get().patients, patient] }); return { patient } } catch (error) { return { error: apiMessage(error) } }
   },
-  removePatient: (id) => { const patients = get().patients.filter((patient) => patient.id !== id); save('clinic_patients', patients); set({ patients }) },
-  addVisit: (data) => {
-    const lastNumber = get().visits.filter((visit) => visit.date === data.date).reduce((max, visit) => Math.max(max, Number(visit.queueNumber?.slice(1)) || 0), 0)
-    const visit = { ...data, id: Date.now(), queueNumber: generateQueueNumber(lastNumber + 1), status: 'Menunggu' }
-    const visits = [...get().visits, visit]; save('clinic_visits', visits); set({ visits }); return visit
+  updatePatient: async (id, data) => {
+    try { const response = await clinicApi.patients.update(id, data); const patient = patientFromApi(response.data.data); set({ patients: get().patients.map((item) => item.id === id ? patient : item) }); return { patient } } catch (error) { return { error: apiMessage(error) } }
   },
-  updateVisitStatus: (id, status) => { const visits = get().visits.map((visit) => visit.id === id ? { ...visit, status } : visit); save('clinic_visits', visits); set({ visits }) },
-  callNext: () => { const next = get().visits.find((visit) => visit.date === today && visit.status === 'Menunggu'); if (!next) return null; get().updateVisitStatus(next.id, 'Check In'); return next },
-  saveExamination: (data) => { const examination = { ...data, id: Date.now(), createdAt: new Date().toISOString() }; const examinations = [...get().examinations, examination]; save('clinic_examinations', examinations); get().updateVisitStatus(data.visitId, 'Selesai'); set({ examinations }) },
+  removePatient: async (id) => {
+    try { await clinicApi.patients.remove(id); set({ patients: get().patients.filter((item) => item.id !== id) }); return {} } catch (error) { return { error: apiMessage(error) } }
+  },
+  addVisit: async (data) => {
+    try { const response = await clinicApi.registrations.create({ ...data, clinic: data.poli }); const visit = visitFromApi(response.data.data); await get().hydrate(); return { visit } } catch (error) { return { error: apiMessage(error) } }
+  },
+  updateVisitStatus: async (id, status) => {
+    const visit = get().queues.find((item) => item.id === id)
+    if (!visit?.queueId) return { error: 'Antrean untuk pendaftaran ini tidak ditemukan.' }
+    try { await clinicApi.queues.status(visit.queueId, status); await get().hydrate(); return {} } catch (error) { return { error: apiMessage(error) } }
+  },
+  callNext: async () => {
+    const next = get().queues.find((visit) => visit.date === today && visit.status === 'Menunggu')
+    if (!next) return { error: 'Tidak ada antrean yang menunggu.' }
+    try { await clinicApi.queues.call(next.queueId); await get().hydrate(); return { visit: { ...next, status: 'Check In' } } } catch (error) { return { error: apiMessage(error) } }
+  },
+  saveExamination: async (data) => {
+    try {
+      const recordResponse = await clinicApi.medicalRecords.create({ ...data, registrationId: data.visitId })
+      const record = recordResponse.data.data
+      if (data.prescriptions) await clinicApi.prescriptions.create({ medicalRecordId: record.id, medicineDetails: data.prescriptions })
+      const examination = { ...data, id: record.id, createdAt: record.created_at || new Date().toISOString() }
+      set({ examinations: [examination, ...get().examinations], visits: get().visits.map((item) => item.id === data.visitId ? { ...item, status: 'Selesai' } : item) })
+      return { examination }
+    } catch (error) { return { error: apiMessage(error) }
+    }
+  },
+  loadPatientHistory: async (patientId) => {
+    try { const response = await clinicApi.medicalRecords.byPatient(patientId); const examinations = response.data.data.map(medicalRecordFromApi); set({ examinations }); return { examinations } } catch (error) { return { error: apiMessage(error) } }
+  },
   getPatient: (id) => get().patients.find((patient) => String(patient.id) === String(id)),
 }))
 
