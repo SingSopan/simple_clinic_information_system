@@ -19,7 +19,12 @@ app.use(express.urlencoded({ extended: true }))
 
 // ── Routes ──────────────────────────────────────────────────
 app.use('/api/health', healthRoutes)
+app.use('/api', authRoutes)
 app.use('/api/auth', authRoutes)
+app.use('/api', require('./routes/clinic.routes'))
+// Alias tanpa prefix API agar endpoint sesuai spesifikasi dapat digunakan langsung.
+app.use('/', authRoutes)
+app.use('/', require('./routes/clinic.routes'))
 
 // ── 404 Handler ─────────────────────────────────────────────
 app.use((req, res) => {
