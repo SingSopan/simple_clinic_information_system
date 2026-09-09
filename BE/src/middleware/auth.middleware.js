@@ -1,25 +1,21 @@
 const jwt = require('jsonwebtoken')
-
-/**
- * Middleware to protect routes with JWT.
- * Expects: Authorization: Bearer <token>
- */
-const authenticate = (req, res, next) => {
-  const authHeader = req.headers.authorization
-
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ success: false, message: 'No token provided' })
-  }
-
-  const token = authHeader.split(' ')[1]
-
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET)
-    req.user = decoded
-    next()
-  } catch (err) {
-    return res.status(401).json({ success: false, message: 'Invalid or expired token' })
-  }
+const { isRevoked } = require('../controllers/auth.controller')
+const secret = () => process.env.JWT_SECRET || 'development-only-change-this-jwt-secret-key-2026'
+const authenticate = (req, res, next) => { 
+    const header = req.headers.authorization; 
+    if (!header?.startsWith('Bearer ')) return res.status(401).json({ success: false, message: 'Token tidak tersedia' }); 
+    const token = header.slice(7); 
+    try { 
+        if (isRevoked(token)) return res.status(401).json({ success: false, message: 'Token sudah logout' }); 
+        req.user = jwt.verify(token, secret()); 
+        req.token = token; 
+        next() 
+    } catch {
+        return res.status(401).json({ success: false, message: 'Token tidak valid atau kedaluwarsa' }) 
+    } 
 }
-
-module.exports = { authenticate }
+const authorize = (...roles) => (req, res, next) => {
+    if (!roles.includes(req.user.role)) return res.status(403).json({ success: false, message: 'Anda tidak memiliki akses ke resource ini' })
+    next()
+}
+module.exports = { authenticate, authorize }
