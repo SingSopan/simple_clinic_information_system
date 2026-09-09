@@ -18,6 +18,9 @@ Aplikasi klinik sederhana yang terdiri dari frontend React dan REST API Express.
 ## Cara instalasi
 
 Clone atau salin project, kemudian masuk ke direktori project:
+```
+git clone https://github.com/SingSopan/simple_clinic_information_system.git
+```
 
 ```powershell
 cd simple_clinic_information_system
