@@ -1,0 +1,43 @@
+{
+  "info": { "name": "Mini Clinic API", "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json" },
+  "variable": [{ "key": "baseUrl", "value": "http://localhost:5000/api" }, { "key": "token", "value": "" }, { "key": "userId", "value": "2" }, { "key": "doctorId", "value": "2" }, { "key": "patientId", "value": "1" }, { "key": "registrationId", "value": "1" }, { "key": "queueId", "value": "1" }, { "key": "medicalRecordId", "value": "1" }, { "key": "prescriptionId", "value": "1" }],
+  "item": [
+    { "name": "Authentication", "item": [
+      { "name": "Login", "event": [{ "listen": "test", "script": { "exec": ["const body = pm.response.json();", "if (body.token) pm.collectionVariables.set('token', body.token);"] } }], "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"email\": \"superadmin@klinik.test\",\n  \"password\": \"admin123\"\n}" }, "url": "{{baseUrl}}/login" } },
+      { "name": "Logout", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/logout" } }
+    ] },
+    { "name": "Users & Reference Data", "item": [
+      { "name": "List Users", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/users" } },
+      { "name": "List Doctors", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/doctors" } },
+      { "name": "Reference Data", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/reference-data" } },
+      { "name": "Create User", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Dokter Baru\", \"email\": \"dokter.baru@klinik.test\", \"password\": \"dokter123\", \"role\": \"Dokter\"\n}" }, "url": "{{baseUrl}}/users" } },
+      { "name": "Update User", "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"User Update\", \"email\": \"user.update@klinik.test\", \"role\": \"Administrator\", \"isActive\": true\n}" }, "url": "{{baseUrl}}/users/{{userId}}" } },
+      { "name": "Delete User", "request": { "method": "DELETE", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/users/{{userId}}" } }
+    ] },
+    { "name": "Patients", "item": [
+      { "name": "List", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/patients" } },
+      { "name": "Detail", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/patients/{{patientId}}" } },
+      { "name": "Create", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"nik\": \"3273014501909999\", \"name\": \"Pasien Postman\", \"gender\": \"Laki-laki\", \"birthDate\": \"1990-01-15\", \"phone\": \"081234567890\", \"address\": \"Jl. Contoh No. 1\"\n}" }, "url": "{{baseUrl}}/patients" } },
+      { "name": "Update", "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"nik\": \"3273014501909999\", \"name\": \"Pasien Postman Update\", \"gender\": \"Laki-laki\", \"birthDate\": \"1990-01-15\", \"phone\": \"081234567890\", \"address\": \"Jl. Contoh No. 2\"\n}" }, "url": "{{baseUrl}}/patients/{{patientId}}" } },
+      { "name": "Delete", "request": { "method": "DELETE", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/patients/{{patientId}}" } }
+    ] },
+    { "name": "Registration", "item": [
+      { "name": "List", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/registrations" } },
+      { "name": "Create", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n \"patientId\": {{patientId}}, \"doctorId\": {{doctorId}}, \"clinic\": \"Poli Umum\", \"date\": \"2026-09-10\", \"payment\": \"Umum\", \"complaint\": \"Demam\"\n}" }, "url": "{{baseUrl}}/registrations" } },
+      { "name": "Update", "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n \"patientId\": {{patientId}}, \"doctorId\": {{doctorId}}, \"clinic\": \"Poli Umum\", \"date\": \"2026-09-10\", \"payment\": \"BPJS\", \"complaint\": \"Demam dan batuk\"\n}" }, "url": "{{baseUrl}}/registrations/{{registrationId}}" } }
+    ] },
+    { "name": "Queue", "item": [
+      { "name": "List", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/queues" } },
+      { "name": "Create", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{ \"registrationId\": {{registrationId}} }" }, "url": "{{baseUrl}}/queues" } },
+      { "name": "Call", "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/queues/{{queueId}}/call" } },
+      { "name": "Status", "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{ \"status\": \"Pemeriksaan\" }" }, "url": "{{baseUrl}}/queues/{{queueId}}/status" } }
+    ] },
+    { "name": "Medical Record & Prescription", "item": [
+      { "name": "List medical records", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/medical-records" } },
+      { "name": "Create medical record", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n \"registrationId\": {{registrationId}}, \"patientId\": {{patientId}}, \"subjective\": \"Demam\", \"bloodPressure\": \"120/80\", \"temperature\": \"37.5\", \"weight\": \"60\", \"height\": \"165\", \"assessment\": \"ISPA\", \"plan\": \"Istirahat dan obat\", \"actions\": \"Pemeriksaan fisik\"\n}" }, "url": "{{baseUrl}}/medical-records" } },
+      { "name": "Patient history", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/medical-records/{{patientId}}" } },
+      { "name": "Create prescription", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{ \"medicalRecordId\": {{medicalRecordId}}, \"medicineDetails\": \"Paracetamol 500mg, 3x sehari\", \"notes\": \"Sesudah makan\" }" }, "url": "{{baseUrl}}/prescriptions" } },
+      { "name": "Prescription detail", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/prescriptions/{{prescriptionId}}" } }
+    ] }
+  ]
+}
