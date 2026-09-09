@@ -1,3 +1,4 @@
-export const paymentTypes = ['Umum', 'BPJS', 'Asuransi']
-export const doctors = ['dr. Andi Pratama', 'dr. Maya Sari', 'dr. Rizky Mahendra']
-export const clinics = ['Poli Umum', 'Poli Gigi', 'Poli KIA']
+import { clinicApi } from '../../../services/clinicApi.js'
+export const registrationService = clinicApi.registrations
+export const getRegistrationReferenceData = clinicApi.referenceData
+export const getDoctors = clinicApi.users.doctors

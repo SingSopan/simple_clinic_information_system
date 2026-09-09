@@ -1,2 +1,18 @@
 import useAuthStore from '../../../store/authStore.js'
-export default function useLogout() { return useAuthStore((state) => state.logout) }
+import { logoutRequest } from '../services/authService.js'
+
+export default function useLogout() {
+  const authStore = useAuthStore()
+
+  return async function logout() {
+    try {
+      await logoutRequest()
+    } catch (error) {
+      console.error('Logout error:', error)
+      // Don't block UI reset on server error
+    } finally {
+      authStore.logout()
+      window.location.href = '/login'
+    }
+  }
+}

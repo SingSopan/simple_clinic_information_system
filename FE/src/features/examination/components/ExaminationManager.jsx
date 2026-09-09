@@ -3,15 +3,315 @@ import useClinicStore from '../../../store/clinicStore.js'
 import { Status } from '../../dashboard/components/DashboardContent.jsx'
 import Modal from '../../../components/Modal/Modal.jsx'
 import { formatDateTime } from '../../../utils/formatDate.js'
+import { Stethoscope } from 'lucide-react'
+import { Search } from 'lucide-react'
+import SearchBar from '../../../components/SearchBar/SearchBar.jsx'
+import { clinicApi } from '../../../services/clinicApi.js'
 
-const blank = { subjective: '', bloodPressure: '', temperature: '', weight: '', height: '', assessment: '', plan: '', actions: '', prescriptions: '' }
+const blank = {
+  subjective: '',
+  bloodPressure: '',
+  temperature: '',
+  weight: '',
+  height: '',
+  assessment: '',
+  plan: '',
+  actions: '',
+  prescriptions: ''
+}
 export default function Examination() {
-  const { visits, patients, examinations, saveExamination } = useClinicStore(); const [selected, setSelected] = useState(null); const [form, setForm] = useState(blank); const [history, setHistory] = useState(null)
+  const { visits, patients, examinations, saveExamination, loadPatientHistory } = useClinicStore();
+  const [selected, setSelected] = useState(null); 
+  const [form, setForm] = useState(blank); 
+  const [history, setHistory] = useState(null)
+  const [historySearch, setHistorySearch] = useState('')
+  const [historyPatients, setHistoryPatients] = useState([])
+  const [historyPatient, setHistoryPatient] = useState(null)
   const ready = useMemo(() => visits.filter((visit) => ['Check In', 'Pemeriksaan'].includes(visit.status)), [visits])
-  const open = (visit) => { setSelected(visit); setForm({ ...blank, subjective: visit.complaint }); }
-  const submit = (event) => { event.preventDefault(); saveExamination({ ...form, visitId: selected.id, patientId: selected.patientId, doctor: selected.doctor }); setSelected(null) }
+  const open = (visit) => { setSelected(visit); setForm({ ...blank, subjective: visit.complaint }); loadPatientHistory(visit.patientId) }
+  const submit = async (event) => { event.preventDefault(); 
+    const result = await saveExamination({ ...form, visitId: selected.id, patientId: selected.patientId, doctor: selected.doctor }); 
+    if (result.error) return window.alert(result.error)
+    setSelected(null) 
+  }
   const patient = (id) => patients.find((item) => item.id === id)
-  return <><div className="page-header"><div><h1 className="page-title"><span>✚</span> Pemeriksaan Dokter</h1><p className="text-muted">Catat pemeriksaan pasien dengan format SOAP.</p></div></div><section className="card mb-2"><div className="card-header"><h2>Pasien Siap Diperiksa</h2><span className="text-muted">{ready.length} pasien</span></div><div className="table-wrapper"><table><thead><tr><th>Antrean</th><th>Pasien</th><th>Keluhan Awal</th><th>Dokter</th><th>Status</th><th>Aksi</th></tr></thead><tbody>{ready.map((visit) => <tr key={visit.id}><td className="font-mono">{visit.queueNumber}</td><td><strong>{patient(visit.patientId)?.name}</strong></td><td>{visit.complaint}</td><td>{visit.doctor}</td><td><Status value={visit.status} /></td><td><button className="btn btn-primary btn-sm" onClick={() => open(visit)}>Periksa</button></td></tr>)}{!ready.length && <tr><td colSpan="6" className="text-center text-muted">Tidak ada pasien yang siap diperiksa.</td></tr>}</tbody></table></div></section><section className="card"><div className="card-header"><h2>Riwayat Pemeriksaan Pasien</h2><span className="text-muted">{examinations.length} catatan</span></div><div className="table-wrapper"><table><thead><tr><th>Waktu</th><th>Pasien</th><th>Diagnosa</th><th>Dokter</th><th></th></tr></thead><tbody>{[...examinations].reverse().map((exam) => <tr key={exam.id}><td>{formatDateTime(exam.createdAt)}</td><td>{patient(exam.patientId)?.name}</td><td>{exam.assessment}</td><td>{exam.doctor}</td><td><button className="btn btn-ghost btn-sm" onClick={() => setHistory(exam)}>Lihat</button></td></tr>)}{!examinations.length && <tr><td colSpan="5" className="text-center text-muted">Belum ada riwayat pemeriksaan.</td></tr>}</tbody></table></div></section>{selected && <Modal title={`Pemeriksaan — ${patient(selected.patientId)?.name}`} onClose={() => setSelected(null)} size="modal-xl"><form onSubmit={submit}><div className="modal-body"><div className="soap-section"><h3 className="soap-section-title">S — Subjective</h3><TextArea label="Keluhan Pasien" value={form.subjective} onChange={(subjective) => setForm({ ...form, subjective })} required /></div><div className="soap-section"><h3 className="soap-section-title">O — Objective</h3><div className="form-grid"><Input label="Tekanan Darah" placeholder="Contoh: 120/80 mmHg" value={form.bloodPressure} onChange={(bloodPressure) => setForm({ ...form, bloodPressure })} /><Input label="Suhu Tubuh" placeholder="Contoh: 36.8 °C" value={form.temperature} onChange={(temperature) => setForm({ ...form, temperature })} /><Input label="Berat Badan" placeholder="Contoh: 60 kg" value={form.weight} onChange={(weight) => setForm({ ...form, weight })} /><Input label="Tinggi Badan" placeholder="Contoh: 165 cm" value={form.height} onChange={(height) => setForm({ ...form, height })} /></div></div><div className="soap-section"><h3 className="soap-section-title">A — Assessment</h3><TextArea label="Diagnosa" value={form.assessment} onChange={(assessment) => setForm({ ...form, assessment })} required /></div><div className="soap-section"><h3 className="soap-section-title">P — Plan</h3><TextArea label="Rencana Terapi" value={form.plan} onChange={(plan) => setForm({ ...form, plan })} required /><div className="form-grid"><TextArea label="Tindakan Medis" value={form.actions} onChange={(actions) => setForm({ ...form, actions })} /><TextArea label="Resep Obat" value={form.prescriptions} onChange={(prescriptions) => setForm({ ...form, prescriptions })} /></div></div></div><div className="modal-footer"><button type="button" className="btn btn-ghost" onClick={() => setSelected(null)}>Batal</button><button className="btn btn-success">Selesaikan Pemeriksaan</button></div></form></Modal>}{history && <Modal title={`Riwayat — ${patient(history.patientId)?.name}`} onClose={() => setHistory(null)}><div className="modal-body history-content"><Detail label="Subjective" value={history.subjective} /><Detail label="Tekanan darah" value={history.bloodPressure} /><Detail label="Suhu / BB / TB" value={`${history.temperature} · ${history.weight} · ${history.height}`} /><Detail label="Assessment" value={history.assessment} /><Detail label="Rencana terapi" value={history.plan} /><Detail label="Tindakan medis" value={history.actions || '-'} /><Detail label="Resep obat" value={history.prescriptions || '-'} /></div><div className="modal-footer"><button className="btn btn-primary" onClick={() => setHistory(null)}>Tutup</button></div></Modal>}</>
+  const searchHistoryPatients = async (event) => { event.preventDefault(); const response = await clinicApi.patients.list({ search: historySearch, limit: 20 }); setHistoryPatients(response.data.data.map((item) => ({ ...item, mrn: item.medicalRecordNumber }))) }
+  const showPatientHistory = async (selectedPatient) => { setHistoryPatient(selectedPatient); setHistory(null); await loadPatientHistory(selectedPatient.id) }
+  return (
+    <>
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">
+            <span><Stethoscope/></span> 
+            Pemeriksaan Dokter
+          </h1>
+          <p className="text-muted">Catat pemeriksaan pasien dengan format SOAP.</p>
+        </div>
+      </div>
+
+      <section className="card mb-2">
+        <div className="card-header">
+          <h2>Pasien Siap Diperiksa</h2>
+          <span className="text-muted">{ready.length} pasien</span>
+        </div>
+        <div className="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Antrean</th>
+                <th>Pasien</th>
+                <th>Keluhan Awal</th>
+                <th>Dokter</th>
+                <th>Status</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody>
+              {ready.map((visit) => (
+                <tr key={visit.id}>
+                  <td className="font-mono">{visit.queueNumber}</td>
+                  <td>
+                    <strong>{patient(visit.patientId)?.name}</strong>
+                  </td>
+                  <td>{visit.complaint}</td>
+                  <td>{visit.doctor}</td>
+                  <td>
+                    <Status value={visit.status} />
+                  </td>
+                  <td>
+                    <button className="btn btn-primary btn-sm" onClick={() => open(visit)}>
+                      Periksa
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {!ready.length && (
+                <tr>
+                  <td colSpan="6" className="text-center text-muted">
+                    Tidak ada pasien yang siap diperiksa.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="card mb-2">
+        <div className="card-header">
+          <div>
+            <h2>Cari Riwayat Pasien</h2>
+            <p className="text-muted small-text">Cari berdasarkan nama, NIK, atau nomor rekam medis.</p>
+          </div>
+        </div>
+        <div className="card-body">
+          <form className="filter-bar" onSubmit={searchHistoryPatients}>
+            <SearchBar
+              value={historySearch}
+              onChange={setHistorySearch}
+              placeholder="Nama, NIK, atau nomor rekam medis..."
+            />
+            <button className="btn btn-primary" type="submit">
+              <Search size={16} /> Cari Pasien
+            </button>
+          </form>
+
+          {historyPatients.length > 0 && (
+            <div className="patient-search-results">
+              {historyPatients.map((item) => (
+                <button
+                  type="button"
+                  className={`patient-search-item ${historyPatient?.id === item.id ? 'active' : ''}`}
+                  key={item.id}
+                  onClick={() => showPatientHistory(item)}
+                >
+                  <strong>{item.name}</strong>
+                  <span>
+                    {item.mrn} · {item.nik}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {historySearch && !historyPatients.length && (
+            <p className="text-muted small-text mt-1">Masukkan kata kunci lalu tekan Cari Pasien.</p>
+          )}
+        </div>
+      </section>
+
+      <section className="card">
+        <div className="card-header">
+          <div>
+            <h2>Riwayat Pemeriksaan Pasien</h2>
+            {historyPatient && (
+              <p className="text-muted small-text">
+                {historyPatient.name} · {historyPatient.mrn}
+              </p>
+            )}
+          </div>
+          <span className="text-muted">{examinations.length} catatan</span>
+        </div>
+        <div className="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Waktu</th>
+                <th>Pasien</th>
+                <th>Diagnosa</th>
+                <th>Dokter</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {[...examinations].reverse().map((exam) => (
+                <tr key={exam.id}>
+                  <td>{formatDateTime(exam.createdAt)}</td>
+                  <td>{historyPatient?.name || exam.patientName || patient(exam.patientId)?.name}</td>
+                  <td>{exam.assessment}</td>
+                  <td>{exam.doctor}</td>
+                  <td>
+                    <button className="btn btn-ghost btn-sm" onClick={() => setHistory(exam)}>
+                      Lihat
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {!examinations.length && (
+                <tr>
+                  <td colSpan="5" className="text-center text-muted">
+                    Belum ada riwayat pemeriksaan.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {selected && (
+        <Modal
+          title={`Pemeriksaan — ${patient(selected.patientId)?.name}`}
+          onClose={() => setSelected(null)}
+          size="modal-xl"
+        >
+          <form onSubmit={submit}>
+            <div className="modal-body">
+              <div className="soap-section">
+                <h3 className="soap-section-title">S — Subjective</h3>
+                <TextArea
+                  label="Keluhan Pasien"
+                  value={form.subjective}
+                  onChange={(subjective) => setForm({ ...form, subjective })}
+                  required
+                />
+              </div>
+
+              <div className="soap-section">
+                <h3 className="soap-section-title">O — Objective</h3>
+                <div className="form-grid">
+                  <Input
+                    label="Tekanan Darah"
+                    placeholder="Contoh: 120/80 mmHg"
+                    value={form.bloodPressure}
+                    onChange={(bloodPressure) => setForm({ ...form, bloodPressure })}
+                    required
+                  />
+                  <Input
+                    label="Suhu Tubuh"
+                    placeholder="Contoh: 36.8 °C"
+                    value={form.temperature}
+                    onChange={(temperature) => setForm({ ...form, temperature })}
+                    required
+                  />
+                  <Input
+                    label="Berat Badan"
+                    placeholder="Contoh: 60 kg"
+                    value={form.weight}
+                    onChange={(weight) => setForm({ ...form, weight })}
+                    required
+                  />
+                  <Input
+                    label="Tinggi Badan"
+                    placeholder="Contoh: 165 cm"
+                    value={form.height}
+                    onChange={(height) => setForm({ ...form, height })}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="soap-section">
+                <h3 className="soap-section-title">A — Assessment</h3>
+                <TextArea
+                  label="Diagnosa"
+                  value={form.assessment}
+                  onChange={(assessment) => setForm({ ...form, assessment })}
+                  required
+                />
+              </div>
+
+              <div className="soap-section">
+                <h3 className="soap-section-title">P — Plan</h3>
+                <TextArea
+                  label="Rencana Terapi"
+                  value={form.plan}
+                  onChange={(plan) => setForm({ ...form, plan })}
+                  required
+                />
+                <div className="form-grid">
+                  <TextArea
+                    label="Tindakan Medis"
+                    value={form.actions}
+                    onChange={(actions) => setForm({ ...form, actions })}
+                    required
+                  />
+                  <TextArea
+                    label="Resep Obat"
+                    value={form.prescriptions}
+                    onChange={(prescriptions) => setForm({ ...form, prescriptions })}
+                    required
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="modal-footer">
+              <button type="button" className="btn btn-ghost" onClick={() => setSelected(null)}>
+                Batal
+              </button>
+              <button className="btn btn-success">Selesaikan Pemeriksaan</button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {history && (
+        <Modal
+          title={`Riwayat — ${patient(history.patientId)?.name}`}
+          onClose={() => setHistory(null)}
+        >
+          <div className="modal-body history-content">
+            <Detail label="Subjective" value={history.subjective} />
+            <Detail label="Tekanan darah" value={history.bloodPressure} />
+            <Detail
+              label="Suhu / BB / TB"
+              value={`${history.temperature} · ${history.weight} · ${history.height}`}
+            />
+            <Detail label="Assessment" value={history.assessment} />
+            <Detail label="Rencana terapi" value={history.plan} />
+            <Detail label="Tindakan medis" value={history.actions || '-'} />
+            <Detail label="Resep obat" value={history.prescriptions || '-'} />
+          </div>
+          <div className="modal-footer">
+            <button className="btn btn-primary" onClick={() => setHistory(null)}>
+              Tutup
+            </button>
+          </div>
+        </Modal>
+      )}
+    </>
+  )
 }
 function Input({ label, value, onChange, placeholder }) { return <div className="form-group"><label className="form-label">{label}</label><input value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} /></div> }
 function TextArea({ label, value, onChange, required }) { return <div className="form-group"><label className="form-label">{label}{required && <span className="required">*</span>}</label><textarea value={value} onChange={(event) => onChange(event.target.value)} required={required} /></div> }

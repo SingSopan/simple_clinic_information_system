@@ -1,1 +1,10 @@
-export function getDashboardStats(patients, visits, date) { const daily = visits.filter((visit) => visit.date === date); return { totalPatients: patients.length, todayPatients: daily.length, totalQueue: daily.length, waiting: daily.filter((visit) => visit.status === 'Menunggu').length, completed: daily.filter((visit) => visit.status === 'Selesai').length } }
+export function getDashboardStats(patients, visits, date) {
+  const daily = visits.filter((visit) => visit.date === date);
+  return {
+    totalPatients: patients.length,
+    todayPatients: daily.length,
+    totalQueue: daily.length,
+    waiting: daily.filter((visit) => visit.status === 'Menunggu').length,
+    completed: daily.filter((visit) => visit.status === 'Selesai').length
+  }
+}

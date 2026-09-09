@@ -1,3 +1,6 @@
-const accounts = [{ email: 'admin@klinik.test', password: 'admin123', name: 'Admin Klinik', role: 'Administrator' }, { email: 'dokter@klinik.test', password: 'dokter123', name: 'dr. Andi Pratama', role: 'Dokter' }, { email: 'petugas@klinik.test', password: 'petugas123', name: 'Nadia Putri', role: 'Petugas Pendaftaran' }]
-export const authenticate = ({ email, password }) => accounts.find((account) => account.email === email && account.password === password) || null
-export const createMockJwt = (user) => `eyJhbGciOiJIUzI1NiJ9.${btoa(JSON.stringify({ sub: user.email, role: user.role, exp: Math.floor(Date.now() / 1000) + 28800 }))}.demo-signature`
+import api from '../../../services/api.js'
+export const authenticate = async (credentials) => { 
+    const { data } = await api.post('/login', credentials); 
+    return data 
+}
+export const logoutRequest = () => api.post('/logout')
