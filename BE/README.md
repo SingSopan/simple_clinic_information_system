@@ -36,7 +36,7 @@ Keterangan:
 
 - `PORT`: port HTTP backend.
 - `NODE_ENV`: environment aplikasi.
-- `JWT_SECRET`: kunci rahasia untuk menandatangani dan memverifikasi JWT. Gunakan nilai acak yang panjang; nilai ini bukan token login.
+- `JWT_SECRET`: Generate JWT token.
 - `JWT_EXPIRES_IN`: masa berlaku token, misalnya `8h` atau `7d`.
 - `DB_*`: konfigurasi koneksi PostgreSQL.
 
