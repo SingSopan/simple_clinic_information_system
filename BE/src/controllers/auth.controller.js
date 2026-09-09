@@ -1,48 +1,23 @@
+const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
 const db = require('../config/db')
-
-/**
- * POST /api/auth/login
- * Body: { username, password }
- *
- * NOTE: Replace this stub with real DB lookup + bcrypt.compare()
- *       once your `users` table is created.
- */
-const login = async (req, res) => {
-  const { username, password } = req.body
-
-  if (!username || !password) {
-    return res.status(400).json({ success: false, message: 'Username and password are required' })
-  }
-
-  try {
-    // TODO: Query users table and verify password with bcrypt
-    // const result = await db.query('SELECT * FROM users WHERE username = $1', [username])
-    // const user = result.rows[0]
-    // if (!user || !await bcrypt.compare(password, user.password)) { ... }
-
-    // --- Temporary stub (replace after DB setup) ---
-    if (username === 'admin' && password === 'admin123') {
-      const payload = { id: 1, username: 'admin', role: 'admin' }
-      const token = jwt.sign(payload, process.env.JWT_SECRET, {
-        expiresIn: process.env.JWT_EXPIRES_IN || '7d',
-      })
-      return res.json({ success: true, token, user: payload })
-    }
-
-    return res.status(401).json({ success: false, message: 'Invalid credentials' })
-  } catch (err) {
-    console.error('Login error:', err)
-    res.status(500).json({ success: false, message: 'Server error' })
-  }
+const revokedTokens = new Set()
+const jwtSecret = () => process.env.JWT_SECRET || 'development-only-change-this-jwt-secret-key-2026'
+exports.isRevoked = (token) => revokedTokens.has(token)
+exports.login = async (req, res) => { const { email, password } = req.body; 
+if (!email || !password) 
+    return res.status(400).json({ success: false, message: 'Email dan password wajib diisi' }); 
+    try { 
+        const result = await db.query('SELECT id,name,email,password_hash,role FROM users WHERE email=$1 AND is_active=TRUE', [email.toLowerCase()]); 
+        const user = result.rows[0]; 
+        if (!user || !await bcrypt.compare(password, user.password_hash)) 
+        return res.status(401).json({ success: false, message: 'Email atau password tidak sesuai' }); 
+        const payload = { id: user.id, name: user.name, email: user.email, role: user.role }; 
+        const token = jwt.sign(payload, jwtSecret(), { expiresIn: process.env.JWT_EXPIRES_IN || '8h' }); 
+        res.json({ success: true, token, user: payload }) 
+    } catch { res.status(500).json({ success: false, message: 'Server error' }) } 
 }
-
-/**
- * GET /api/auth/me
- * Returns the currently authenticated user (from JWT).
- */
-const me = (req, res) => {
-  res.json({ success: true, user: req.user })
+exports.logout = (req, res) => { revokedTokens.add(req.token); 
+    res.json({ success: true, message: 'Logout berhasil' }) 
 }
-
-module.exports = { login, me }
+exports.me = (req, res) => res.json({ success: true, user: req.user })
