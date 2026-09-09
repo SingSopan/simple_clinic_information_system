@@ -1,0 +1,9 @@
+import { NavLink, useNavigate } from 'react-router-dom'
+import useAuthStore from '../../store/authStore.js'
+
+const menus = [{ to: '/', label: 'Dashboard', icon: '▦', roles: ['Administrator', 'Dokter', 'Petugas Pendaftaran'] }, { to: '/pasien', label: 'Data Pasien', icon: '♙', roles: ['Administrator', 'Petugas Pendaftaran'] }, { to: '/pendaftaran', label: 'Pendaftaran', icon: '▣', roles: ['Administrator', 'Petugas Pendaftaran'] }, { to: '/antrean', label: 'Antrean', icon: '☷', roles: ['Administrator', 'Dokter', 'Petugas Pendaftaran'] }, { to: '/pemeriksaan', label: 'Pemeriksaan', icon: '✚', roles: ['Administrator', 'Dokter'] }]
+export default function Sidebar() {
+  const { user, role, logout } = useAuthStore(); const navigate = useNavigate()
+  const leave = () => { logout(); navigate('/login') }
+  return <aside className="sidebar"><div className="sidebar-logo"><div className="sidebar-logo-icon">✚</div><div className="sidebar-logo-text"><span className="sidebar-logo-name">Mini Clinic</span><span className="sidebar-logo-sub">Sistem Informasi Klinik</span></div></div><nav className="sidebar-nav"><div className="sidebar-section-label">Menu Utama</div>{menus.filter((item) => item.roles.includes(role)).map((item) => <NavLink key={item.to} to={item.to} end={item.to === '/'} className="sidebar-item"><span className="sidebar-icon">{item.icon}</span><span className="sidebar-label">{item.label}</span></NavLink>)}</nav><div className="sidebar-bottom"><div className="sidebar-user"><div className="sidebar-avatar">{user?.name?.slice(0, 1)}</div><div className="sidebar-user-info"><div className="sidebar-username">{user?.name}</div><div className="sidebar-role">{role}</div></div></div><button className="sidebar-item logout-button" onClick={leave}><span className="sidebar-icon">↪</span><span className="sidebar-label">Logout</span></button></div></aside>
+}
