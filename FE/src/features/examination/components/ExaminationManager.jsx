@@ -6,8 +6,10 @@ import { formatDateTime } from '../../../utils/formatDate.js'
 import { Stethoscope } from 'lucide-react'
 import { Search } from 'lucide-react'
 import SearchBar from '../../../components/SearchBar/SearchBar.jsx'
+import Pagination from '../../../components/Pagination/Pagination.jsx'
 import { clinicApi } from '../../../services/clinicApi.js'
 
+const PAGE_SIZE = 5
 const blank = {
   subjective: '',
   bloodPressure: '',
@@ -27,7 +29,13 @@ export default function Examination() {
   const [historySearch, setHistorySearch] = useState('')
   const [historyPatients, setHistoryPatients] = useState([])
   const [historyPatient, setHistoryPatient] = useState(null)
+  const [historyPage, setHistoryPage] = useState(1)
   const ready = useMemo(() => visits.filter((visit) => ['Check In', 'Pemeriksaan'].includes(visit.status)), [visits])
+  const sortedExaminations = useMemo(
+    () => [...examinations].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)),
+    [examinations]
+  )
+  const historyRows = sortedExaminations.slice((historyPage - 1) * PAGE_SIZE, historyPage * PAGE_SIZE)
   const open = (visit) => { setSelected(visit); setForm({ ...blank, subjective: visit.complaint }); loadPatientHistory(visit.patientId) }
   const submit = async (event) => { event.preventDefault(); 
     const result = await saveExamination({ ...form, visitId: selected.id, patientId: selected.patientId, doctor: selected.doctor }); 
@@ -36,7 +44,7 @@ export default function Examination() {
   }
   const patient = (id) => patients.find((item) => item.id === id)
   const searchHistoryPatients = async (event) => { event.preventDefault(); const response = await clinicApi.patients.list({ search: historySearch, limit: 20 }); setHistoryPatients(response.data.data.map((item) => ({ ...item, mrn: item.medicalRecordNumber }))) }
-  const showPatientHistory = async (selectedPatient) => { setHistoryPatient(selectedPatient); setHistory(null); await loadPatientHistory(selectedPatient.id) }
+  const showPatientHistory = async (selectedPatient) => { setHistoryPatient(selectedPatient); setHistory(null); setHistoryPage(1); await loadPatientHistory(selectedPatient.id) }
   return (
     <>
       <div className="page-header">
@@ -164,7 +172,7 @@ export default function Examination() {
               </tr>
             </thead>
             <tbody>
-              {[...examinations].reverse().map((exam) => (
+              {historyRows.map((exam) => (
                 <tr key={exam.id}>
                   <td>{formatDateTime(exam.createdAt)}</td>
                   <td>{historyPatient?.name || exam.patientName || patient(exam.patientId)?.name}</td>
@@ -187,6 +195,12 @@ export default function Examination() {
             </tbody>
           </table>
         </div>
+        <Pagination
+          page={historyPage}
+          total={sortedExaminations.length}
+          pageSize={PAGE_SIZE}
+          onChange={setHistoryPage}
+        />
       </section>
 
       {selected && (

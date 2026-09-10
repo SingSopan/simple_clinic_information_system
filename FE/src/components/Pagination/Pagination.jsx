@@ -1,6 +1,12 @@
+import { useEffect } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 export default function Pagination({ page, total, pageSize = 5, onChange }) {
   const pages = Math.max(1, Math.ceil(total / pageSize))
+
+  useEffect(() => {
+    if (page > pages) onChange(pages)
+  }, [onChange, page, pages])
+
   return <div className="pagination">
     <span className="pagination-info">Menampilkan {total ? (page - 1) * pageSize + 1 : 0}–{Math.min(page * pageSize, total)} dari {total} data</span>
     <div className="pagination-controls">

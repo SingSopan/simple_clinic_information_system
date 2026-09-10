@@ -2,12 +2,16 @@ import { useState } from 'react'
 import useClinicStore, { today } from '../../../store/clinicStore.js'
 import { Status } from '../../dashboard/components/DashboardContent.jsx'
 import { LogsIcon, Phone } from 'lucide-react'
+import Pagination from '../../../components/Pagination/Pagination.jsx'
 
+const PAGE_SIZE = 5
 const nextStatus = { Menunggu: 'Check In', 'Check In': 'Pemeriksaan', Pemeriksaan: 'Selesai' }
 export default function Queue() {
   const { queues, getPatient, callNext, updateVisitStatus } = useClinicStore(); 
   const [called, setCalled] = useState(null); 
+  const [page, setPage] = useState(1)
   const queue = queues.filter((visit) => visit.date === today).sort((a, b) => a.queueNumber.localeCompare(b.queueNumber))
+  const queueRows = queue.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
   const call = async () => { 
     const result = await callNext(); 
     if (result.error) return window.alert(result.error)
@@ -75,7 +79,7 @@ export default function Queue() {
               </tr>
             </thead>
             <tbody>
-              {queue.map((visit) => (
+              {queueRows.map((visit) => (
                 <tr key={visit.id}>
                   <td>
                     <strong className="font-mono">{visit.queueNumber}</strong>
@@ -109,6 +113,12 @@ export default function Queue() {
             </tbody>
           </table>
         </div>
+        <Pagination
+          page={page}
+          total={queue.length}
+          pageSize={PAGE_SIZE}
+          onChange={setPage}
+        />
       </section>
     </>
   )

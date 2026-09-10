@@ -2,18 +2,23 @@ import { useState } from 'react'
 import useClinicStore, { today } from '../../../store/clinicStore.js'
 import { Status } from '../../dashboard/components/DashboardContent.jsx'
 import Modal from '../../../components/Modal/Modal.jsx'
+import Pagination from '../../../components/Pagination/Pagination.jsx'
 import { Form, Plus } from 'lucide-react'
 
+const PAGE_SIZE = 5
 const blank = { patientId: '', doctorId: '', poli: '', date: today, payment: '', complaint: '' }
 export default function Registrations() {
   const { visits, patients, doctors, referenceData, addVisit, getPatient } = useClinicStore(); 
   const [modal, setModal] = useState(false); 
   const [form, setForm] = useState(blank)
+  const [page, setPage] = useState(1)
+  const registrationRows = visits.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
   const submit = async (event) => { 
     event.preventDefault(); 
     const result = await addVisit({ ...form, patientId: Number(form.patientId) }); 
     if (result.error) return window.alert(result.error)
     setModal(false); 
+    setPage(1)
     setForm(blank) 
   }
   return (
@@ -50,7 +55,7 @@ export default function Registrations() {
               </tr>
             </thead>
             <tbody>
-              {[...visits].reverse().map((visit) => (
+              {registrationRows.map((visit) => (
                 <tr key={visit.id}>
                   <td>
                     <strong className="font-mono">{visit.queueNumber}</strong>
@@ -75,6 +80,12 @@ export default function Registrations() {
             </tbody>
           </table>
         </div>
+        <Pagination
+          page={page}
+          total={visits.length}
+          pageSize={PAGE_SIZE}
+          onChange={setPage}
+        />
       </section>
 
       {modal && (

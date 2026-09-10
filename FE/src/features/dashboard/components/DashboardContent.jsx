@@ -1,9 +1,18 @@
 import { Activity, CheckCircle2, Clock3, ListOrdered, Users } from 'lucide-react'
+import { useMemo, useState } from 'react'
 import useClinicStore, { today } from '../../../store/clinicStore.js'
+import Pagination from '../../../components/Pagination/Pagination.jsx'
 
+const PAGE_SIZE = 5
 export default function DashboardContent() {
   const { patients, visits } = useClinicStore()
-  const daily = visits.filter((visit) => visit.date === today)
+  const [queuePage, setQueuePage] = useState(1)
+  const daily = useMemo(() => visits.filter((visit) => visit.date === today), [visits])
+  const latestQueues = useMemo(
+    () => [...daily].sort((a, b) => String(b.queueNumber).localeCompare(String(a.queueNumber))),
+    [daily]
+  )
+  const latestQueueRows = latestQueues.slice((queuePage - 1) * PAGE_SIZE, queuePage * PAGE_SIZE)
   const stats = [
     [Users, 'Total Pasien', patients.length, 'Seluruh pasien terdaftar', '#4f86f7', '#dbeafe'],
     [Activity, 'Pasien Hari Ini', daily.length, 'Kunjungan hari ini', '#06b6d4', '#cffafe'],
@@ -64,8 +73,8 @@ export default function DashboardContent() {
               </tr>
             </thead>
             <tbody>
-              {daily.length ? (
-                daily.map((visit) => {
+              {latestQueues.length ? (
+                latestQueueRows.map((visit) => {
                   const patient = patients.find((item) => item.id === visit.patientId)
                   return (
                     <tr key={visit.id}>
@@ -91,6 +100,12 @@ export default function DashboardContent() {
             </tbody>
           </table>
         </div>
+        <Pagination
+          page={queuePage}
+          total={latestQueues.length}
+          pageSize={PAGE_SIZE}
+          onChange={setQueuePage}
+        />
       </section>
     </>
   )
